@@ -1,0 +1,15 @@
+Discrete Mathematics: Propositional Logic & Graph Theory
+
+1. Propositional Logic:
+   - Proposition: A statement that is either True or False.
+   - Tautology: A compound proposition that is always True.
+   - Contradiction: A proposition that is always False.
+
+2. Mathematical Induction Proof:
+   - Base step: Prove P(1) is true.
+   - Inductive step: Assume P(k) is true, prove P(k+1) is true.
+
+3. Graph Theory:
+   - Eulerian Graph: Contains a closed trail containing all edges of a graph.
+   - Hamiltonian Cycle: Graph cycle that visits each vertex exactly once.
+   - Pigeonhole Principle: If n items are put into m containers, with n > m, at least one container must contain more than one item.

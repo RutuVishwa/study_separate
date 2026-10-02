@@ -1,0 +1,18 @@
+DBMS & SQL Normalization Notes
+
+1. Primary Key vs Foreign Key:
+   - Primary Key uniquely identifies a record in a relational database table.
+   - Foreign Key creates a link between two relational tables.
+
+2. Normal Forms:
+   - 1NF: Atomic values only.
+   - 2NF: No partial dependencies on primary keys.
+   - 3NF: No transitive dependencies.
+   - BCNF: For every functional dependency X -> Y, X must be a super key.
+
+3. Example SQL Query:
+   SELECT s.student_id, s.name, c.course_name 
+   FROM Students s 
+   JOIN Enrollments e ON s.student_id = e.student_id 
+   JOIN Courses c ON e.course_id = c.course_id 
+   WHERE s.gpa >= 3.5;

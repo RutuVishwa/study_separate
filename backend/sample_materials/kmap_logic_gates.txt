@@ -1,0 +1,15 @@
+LDM: Logic Design and Microprocessor Concepts
+
+1. Boolean Algebra & Logic Gates:
+   - AND Gate: Output is HIGH only if all inputs are HIGH.
+   - OR Gate: Output is HIGH if any input is HIGH.
+   - NOT Gate: Inverts the logic level.
+   - NAND / NOR: Universal Logic Gates.
+
+2. Karnaugh Maps (K-Maps):
+   - Used to simplify Boolean algebraic expressions without lengthy algebraic calculations.
+   - 4-variable K-map contains 16 cells representing minterms.
+
+3. Flip-Flops and Registers:
+   - SR, JK, D, and T Flip-Flops store 1 bit of digital state.
+   - Microprocessor 8086 registers: AX, BX, CX, DX general purpose registers.

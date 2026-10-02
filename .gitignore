@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+*.db
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/temp/*
+!backend/temp/.gitkeep
+
+# Node / Frontend
+node_modules/
+frontend/dist/
+frontend/node_modules/
+.DS_Store
+
+# Environment variables
+.env
+*.env
