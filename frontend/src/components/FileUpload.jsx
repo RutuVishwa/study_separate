@@ -85,12 +85,23 @@ export default function FileUpload({ onUploadSuccess, setAnnounceMessage }) {
       </h2>
 
       {errorMsg && (
-        <div className="confidence-box" style={{ borderColor: 'var(--danger)', backgroundColor: 'rgba(239, 68, 68, 0.1)', marginBottom: '16px' }} role="alert">
-          <div className="confidence-header" style={{ color: 'var(--danger)' }}>
-            <AlertCircle className="w-5 h-5" aria-hidden="true" />
-            <span>Upload Failed</span>
+        <div className="confidence-box" style={{ borderColor: 'var(--danger)', backgroundColor: 'rgba(239, 68, 68, 0.1)', marginBottom: '16px', position: 'relative' }} role="alert">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="confidence-header" style={{ color: 'var(--danger)', marginBottom: 0 }}>
+              <AlertCircle className="w-5 h-5" aria-hidden="true" />
+              <span>Upload Notice</span>
+            </div>
+            <button
+              type="button"
+              className="btn-action"
+              onClick={() => setErrorMsg(null)}
+              style={{ padding: '2px 8px', fontSize: '0.8rem' }}
+              aria-label="Dismiss error notification"
+            >
+              Dismiss
+            </button>
           </div>
-          <p style={{ fontSize: '0.9rem' }}>{errorMsg}</p>
+          <p style={{ fontSize: '0.9rem', marginTop: '8px' }}>{errorMsg}</p>
         </div>
       )}
 
