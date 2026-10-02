@@ -1,4 +1,13 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
+function resolveApiBaseUrl() {
+  const envUrl = import.meta.env.VITE_API_URL;
+  const fallback = 'http://127.0.0.1:8000/api';
+  if (!envUrl) return fallback;
+  const trimmed = envUrl.replace(/\/$/, '');
+  if (trimmed.endsWith('/api')) return trimmed;
+  return `${trimmed}/api`;
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 export async function fetchHealth() {
   const res = await fetch(`${API_BASE_URL.replace('/api', '')}/health`);
