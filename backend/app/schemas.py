@@ -14,7 +14,7 @@ class MaterialResponse(BaseModel):
     file_size: int
     subject: str
     confidence: float
-    uploaded_at: Optional[str] = None
+    uploaded_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
