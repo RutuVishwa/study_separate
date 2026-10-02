@@ -79,11 +79,16 @@ def download_material(
             detail="The file does not exist on the server storage."
         )
 
-    # Set disposition header so browser can preview or download cleanly
+    import mimetypes
+    media_type, _ = mimetypes.guess_type(material.filename)
+    if not media_type:
+        media_type = "text/plain" # fallback to text/plain so it displays in iframe
+
     return FileResponse(
         path=str(file_path),
         filename=material.filename,
-        media_type="application/octet-stream"
+        media_type=media_type,
+        content_disposition_type="inline"
     )
 
 @router.delete("/{material_id}", status_code=status.HTTP_200_OK)
