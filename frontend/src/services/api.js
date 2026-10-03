@@ -19,19 +19,12 @@ function resolveEnvApiBaseUrl() {
 }
 
 const ENV_API_BASE = resolveEnvApiBaseUrl();
-const SAME_ORIGIN_API_BASE = getSameOriginApiBase();
 
 function buildCandidateBases() {
-  const out = [];
   if (ENV_API_BASE) {
-    out.push(ENV_API_BASE);
+    return [ENV_API_BASE];
   }
-  if (SAME_ORIGIN_API_BASE) {
-    const normalizedSame = SAME_ORIGIN_API_BASE;
-    if (!out.includes(normalizedSame)) out.push(normalizedSame);
-  }
-  if (out.length === 0) out.push('http://127.0.0.1:8000/api');
-  return out;
+  return [getSameOriginApiBase()];
 }
 
 const API_BASE_CANDIDATES = buildCandidateBases();
@@ -46,6 +39,7 @@ export function getApiBaseDiagnostics() {
     locationProtocol: location?.protocol || null,
     envUrl: import.meta.env.VITE_API_URL || null,
     envBaseResolved: ENV_API_BASE || null,
+    isDevProxy: ENV_API_BASE == null,
   };
 }
 
@@ -132,6 +126,13 @@ export async function fetchMaterials(subject = null) {
 }
 
 export async function uploadMaterial(file, subjectOverride = null, onProgress = () => {}) {
+  let wokeBackend = false;
+  try {
+    await fetchHealth();
+    wokeBackend = true;
+  } catch {
+  }
+
   const formData = new FormData();
   formData.append('file', file);
   if (subjectOverride) {
@@ -141,11 +142,12 @@ export async function uploadMaterial(file, subjectOverride = null, onProgress = 
   const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
   const timeoutId = controller ? setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS) : null;
 
-  const tried = [];
+  const MAX_ATTEMPTS = 2;
   let lastErr = null;
   let res = null;
-  for (const base of API_BASE_CANDIDATES) {
-    tried.push(base);
+  const base = API_BASE_URL;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       res = await fetch(`${base}/materials/upload`, {
         method: 'POST',
@@ -154,32 +156,44 @@ export async function uploadMaterial(file, subjectOverride = null, onProgress = 
       });
       if (res.ok && responseIsApiResponse(res)) break;
       if (res.ok) {
-        lastErr = new Error(`Got non-API response from ${base} (likely SPA HTML). Falling back...`);
+        lastErr = new Error(`Got non-API response from ${base} (likely SPA HTML).`);
         res = null;
-        continue;
+        break;
       }
-      if (res.type && res.type === 'opaque') continue;
+      if (res.type && res.type === 'opaque') {
+        lastErr = new Error('Got opaque (no-cors) response from the backend. CORS preflight likely blocked by the browser.');
+        res = null;
+      }
+      if (res.status >= 400 && attempt === MAX_ATTEMPTS) break;
       if (res.status >= 400) break;
+      lastErr = new Error(`Upload attempt ${attempt} failed (HTTP ${res.status}). Retrying…`);
+      res = null;
     } catch (err) {
       if (err?.name === 'AbortError') {
         if (timeoutId) clearTimeout(timeoutId);
         throw new Error('Upload timed out. Please try again with a smaller file or better connection.');
       }
       lastErr = err;
-      continue;
+      if (attempt < MAX_ATTEMPTS) {
+        await new Promise(r => setTimeout(r, 800 * attempt));
+        continue;
+      }
     }
   }
 
   if (timeoutId) clearTimeout(timeoutId);
 
   if (!res) {
-    let msg = 'Upload network error.';
-    if (lastErr?.message) msg += ` ${lastErr.message}`;
-    if (tried.length > 1) {
-      msg += ` Tried ${tried.length} endpoint(s): ${tried.join(' ; ')}.`;
-    }
-    if (ENV_API_BASE) {
-      msg += ` Ensure the backend service is running at ${ENV_API_BASE.replace('/api', '')} and CORS (OPTIONS) preflight requests succeed from your browser.`;
+    let msg = `Upload network error. Backend used: ${base}.`;
+    if (wokeBackend) msg += ' (Pre-flight health check succeeded, so backend is reachable for GETs.)';
+    if (lastErr) {
+      if (/failed to fetch|networkerror|typeerror/i.test(lastErr.constructor.name + ' ' + (lastErr.message || ''))) {
+        msg += ' Browser blocked the CORS preflight (OPTIONS) request or the backend was unreachable during upload.';
+        msg += ' Ensure both sites are served over HTTPS and the backend is awake (Render free-tier spin-down can cause this).';
+        if (lastErr?.message) msg += ` Detail: ${lastErr.message}`;
+      } else if (lastErr?.message) {
+        msg += ` ${lastErr.message}`;
+      }
     }
     throw new Error(msg);
   }
