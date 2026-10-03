@@ -12,11 +12,11 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Enable CORS for frontend accessibility
-# Note: allow_credentials MUST be False when allow_origins is ["*"] per
+# Enable CORS for the separate frontend service.
+# NOTE: allow_credentials MUST be False when allow_origins is ["*"] per
 # the CORS spec. Violating this causes strict mobile browsers to reject
 # preflight (OPTIONS) requests for multipart file uploads with "Failed to fetch".
-# Since this API does not rely on cookies/session auth, credentials are not needed.
+# This API does not rely on cookie/session auth, so credentials are not needed.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -26,7 +26,7 @@ app.add_middleware(
     expose_headers=["Content-Disposition"],
 )
 
-# Include API Routers
+# API Routers
 app.include_router(upload.router)
 app.include_router(materials.router)
 
