@@ -1,4 +1,5 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, status
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from pathlib import Path
 import uuid
@@ -87,7 +88,7 @@ async def upload_material(
 
     # 4. Extract text
     try:
-        extracted_text = extract_text(temp_file_path)
+        extracted_text = await run_in_threadpool(extract_text, temp_file_path)
     except ValueError as err:
         delete_file(str(temp_file_path))
         raise HTTPException(
@@ -103,7 +104,7 @@ async def upload_material(
 
     # 5. Send to AI Classifier
     try:
-        ai_res = classify_material(extracted_text)
+        ai_res = await run_in_threadpool(classify_material, extracted_text)
         classified_subject = ai_res.get("subject")
         confidence = ai_res.get("confidence", 0.0)
     except Exception as err:

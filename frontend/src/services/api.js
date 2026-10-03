@@ -1,4 +1,4 @@
-const UPLOAD_TIMEOUT_MS = 120000;
+const UPLOAD_TIMEOUT_MS = 300000;
 
 function getSameOriginApiBase() {
   if (typeof window !== 'undefined' && window.location?.origin) {
@@ -29,12 +29,14 @@ function buildCandidateBases() {
 
 const API_BASE_CANDIDATES = buildCandidateBases();
 const API_BASE_URL = API_BASE_CANDIDATES[0];
+const API_ROOT = API_BASE_URL.replace(/\/api$/, '');
 
 export function getApiBaseDiagnostics() {
   const location = typeof window !== 'undefined' ? window.location : null;
   return {
     candidates: API_BASE_CANDIDATES,
     primary: API_BASE_URL,
+    apiRoot: API_ROOT,
     locationOrigin: location?.origin || null,
     locationProtocol: location?.protocol || null,
     envUrl: import.meta.env.VITE_API_URL || null,
@@ -51,6 +53,32 @@ function responseIsApiResponse(res) {
   if (res.status >= 400) return true;
   if (ct.length === 0) return true;
   return true;
+}
+
+export async function waitForBackend(maxMs = 70000) {
+  const start = Date.now();
+  while (Date.now() - start < maxMs) {
+    for (const base of API_BASE_CANDIDATES) {
+      try {
+        const root = base.replace(/\/api$/, '');
+        const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const t = ctrl ? setTimeout(() => ctrl.abort(), 8000) : null;
+        const r = await fetch(`${root}/health`, {
+          signal: ctrl ? ctrl.signal : undefined,
+          cache: 'no-store',
+          method: 'GET',
+        });
+        if (t) clearTimeout(t);
+        if (r.ok && responseIsApiResponse(r)) {
+          try { await r.json(); } catch {}
+          return true;
+        }
+      } catch {
+      }
+    }
+    await new Promise(r => setTimeout(r, 2000));
+  }
+  return false;
 }
 
 async function tryBases({
@@ -98,18 +126,26 @@ async function tryBases({
 export async function fetchHealth({ retries = 3, retryDelayMs = 1200 } = {}) {
   let lastErr = null;
   for (let i = 0; i < retries; i++) {
-    try {
-      const { res } = await tryBases({
-        path: '/health',
-        init: { method: 'GET' },
-        expectJson: false,
-      });
-      const data = await res.json().catch(() => ({ status: 'ok' }));
-      if (data) return data;
-    } catch (err) {
-      lastErr = err;
-      if (i < retries - 1) await new Promise(r => setTimeout(r, retryDelayMs * (i + 1)));
+    for (const base of API_BASE_CANDIDATES) {
+      try {
+        const root = base.replace(/\/api$/, '');
+        const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const t = ctrl ? setTimeout(() => ctrl.abort(), 6000) : null;
+        const r = await fetch(`${root}/health`, {
+          signal: ctrl ? ctrl.signal : undefined,
+          cache: 'no-store',
+          method: 'GET',
+        });
+        if (t) clearTimeout(t);
+        if (r.ok) {
+          const data = await r.json().catch(() => ({ status: 'ok' }));
+          if (data) return data;
+        }
+      } catch (err) {
+        lastErr = err;
+      }
     }
+    if (i < retries - 1) await new Promise(r => setTimeout(r, retryDelayMs * (i + 1)));
   }
   if (lastErr) throw lastErr;
   return { status: 'ok' };
@@ -137,15 +173,21 @@ export async function fetchMaterials(subject = null) {
 }
 
 export async function uploadMaterial(file, subjectOverride = null, onProgress = () => {}) {
-  let wokeBackend = false;
+  const wokeBackend = await waitForBackend(70000);
+  if (!wokeBackend) {
+    throw new Error('Server is still waking up. Please try again in a minute (Render free-tier cold start can take 30-60 seconds).');
+  }
+
+  let safeFile;
   try {
-    await fetchHealth({ retries: 4, retryDelayMs: 1200 });
-    wokeBackend = true;
+    const buf = await file.arrayBuffer();
+    safeFile = new File([buf], file.name, { type: file.type || 'application/octet-stream' });
   } catch {
+    throw new Error('Could not read the selected file on this device. Copy it to internal storage (Downloads folder) and pick it again.');
   }
 
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', safeFile);
   if (subjectOverride) {
     formData.append('subject_override', subjectOverride);
   }
@@ -195,12 +237,11 @@ export async function uploadMaterial(file, subjectOverride = null, onProgress = 
   if (timeoutId) clearTimeout(timeoutId);
 
   if (!res) {
-    let msg = `Upload network error. Backend used: ${base}.`;
-    if (wokeBackend) msg += ' (Pre-flight health check succeeded, so backend is reachable for GETs.)';
+    let msg = `Upload network error. Backend used: ${base}. Backend health check: ${wokeBackend ? 'PASSED' : 'FAILED'}.`;
     if (lastErr) {
       if (/failed to fetch|networkerror|typeerror/i.test(lastErr.constructor.name + ' ' + (lastErr.message || ''))) {
         msg += ' Browser blocked the CORS preflight (OPTIONS) request or the backend was unreachable during upload.';
-        msg += ' Ensure both sites are served over HTTPS and the backend is awake (Render free-tier spin-down can cause this).';
+        msg += ' Ensure both sites are served over HTTPS and the backend is awake.';
         if (lastErr?.message) msg += ` Detail: ${lastErr.message}`;
       } else if (lastErr?.message) {
         msg += ` ${lastErr.message}`;
@@ -218,7 +259,7 @@ export async function uploadMaterial(file, subjectOverride = null, onProgress = 
 
 export async function confirmUpload(tempFileId, confirmedSubject) {
   const body = JSON.stringify({
-    temp_file_id: tempFileId,
+    temp_file_id: tempFile_id,
     confirmed_subject: confirmedSubject,
   });
   const { res } = await tryBases({

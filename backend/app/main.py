@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request, Response
+from fastapi.responses import JSONResponse
 from app.database import engine, Base
 from app.routes import upload, materials
 
@@ -55,7 +56,13 @@ async def permissive_cors_middleware(request: Request, call_next):
         if acpn:
             response.headers["Access-Control-Allow-Private-Network"] = "true"
     else:
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception:
+            response = JSONResponse(
+                {"detail": "Internal server error"},
+                status_code=500,
+            )
 
     response.headers["Vary"] = "Origin, Access-Control-Request-Method, Access-Control-Request-Headers, Access-Control-Request-Private-Network"
     response.headers["Access-Control-Expose-Headers"] = "Content-Disposition, Content-Length, Content-Type"

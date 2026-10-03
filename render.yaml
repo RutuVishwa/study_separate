@@ -5,15 +5,7 @@ services:
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
-    disk:
-      name: study-organizer-data
-      mountPath: /data
-      sizeGB: 1
     envVars:
-      - key: DATA_DIR
-        value: /data
-      - key: DATABASE_URL
-        value: sqlite:////data/study_organizer.db
       - key: OPENROUTER_API_KEY
         sync: false
       - key: OPENROUTER_MODEL
