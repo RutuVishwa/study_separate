@@ -318,12 +318,18 @@ const TerminalApp = () => {
         </div>
         
         {/* Hidden file input for uploading */}
+        {/* NOTE: Mix of MIME types + extension fallback */}
+        {/* Mobile Safari/Chrome require recognized MIME types; unrecognized extensions
+            like .cpp/.py/.h cause the picker to disable all files.
+            */* fallback ensures code files never get grayed out on mobile.
+            Actual extension validation still enforced server-side via backend
+            is_allowed_extension() anyway. */}
         <input 
           type="file" 
           ref={fileInputRef} 
           style={{ display: 'none' }} 
           onChange={onFileChange}
-          accept=".pdf,.docx,.c,.cpp,.h,.hpp,.py,.java,.js,.ts,.txt,.md"
+          accept="application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown,text/*,.pdf,.docx,.txt,.md,.c,.cpp,.h,.hpp,.py,.java,.js,.ts,*/*"
         />
       </div>
 

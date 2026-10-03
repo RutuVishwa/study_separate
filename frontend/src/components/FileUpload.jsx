@@ -111,7 +111,7 @@ export default function FileUpload({ onUploadSuccess, setAnnounceMessage }) {
             id="file-upload-input"
             type="file"
             className="file-input-hidden"
-            accept=".pdf,.docx,.c,.cpp,.h,.hpp,.py,.java,.js,.ts,.txt,.md"
+            accept="application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown,text/*,.pdf,.docx,.txt,.md,.c,.cpp,.h,.hpp,.py,.java,.js,.ts,*/*"
             onChange={handleFileChange}
             disabled={isProcessing}
           />
