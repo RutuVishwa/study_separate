@@ -18,6 +18,7 @@ ALLOWED_SUBJECTS = [
 # File processing limits & configuration
 ALLOWED_EXTENSIONS = {
     ".pdf",
+    ".docx",
     ".c",
     ".cpp",
     ".h",

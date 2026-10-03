@@ -35,6 +35,14 @@ const TerminalApp = () => {
     setHistory(prev => [...prev, { type, content: text }]);
   };
 
+  const printArrangedMessage = (filename, subject) => {
+    print('-------------------------------------------------------');
+    print(`File arranged in folder: ${subject}/`, 'success');
+    print(`  ${filename}  ->  ${subject}/${filename}`, 'success');
+    print('Segregation complete.');
+    print('-------------------------------------------------------');
+  };
+
   const showMainMenu = () => {
     print('-------------------------------------------------------');
     print('MAIN MENU');
@@ -237,17 +245,28 @@ const TerminalApp = () => {
 
     try {
       const data = await uploadMaterial(file);
-      if (data.status === 'success') {
-        print(`Upload successful. Classified as: ${data.data.subject}`);
-        showMainMenu();
-      } else if (data.status === 'needs_confirmation') {
-        print(`AI classified this as: ${data.data.suggested_subject} (Confidence: ${(data.data.confidence * 100).toFixed(1)}%)`);
+      if (data.needs_confirmation) {
+        print(`AI classified this as: ${data.suggested_subject} (Confidence: ${(data.confidence * 100).toFixed(1)}%)`);
         print('Do you want to confirm this classification? (y/n)');
-        setContext({ ...context, tempFileId: data.data.temp_file_id, suggestedSubject: data.data.suggested_subject });
+        setContext({
+          ...context,
+          tempFileId: data.temp_file_id,
+          suggestedSubject: data.suggested_subject,
+          pendingFilename: file.name,
+        });
         setMode('CONFIRM_UPLOAD');
+      } else {
+        const filename = data.material?.filename || file.name;
+        const subject = data.material?.subject;
+        printArrangedMessage(filename, subject);
+        showMainMenu();
       }
     } catch (err) {
-      print(`Upload failed: ${err.message}`, 'error');
+      const msg = err?.message || 'Unknown error';
+      print(`Upload failed: ${msg}`, 'error');
+      if (/failed to fetch|network|cors|mixed|http/i.test(msg)) {
+        print('Tip: If on mobile, ensure both frontend and backend use HTTPS and refresh the page.', 'error');
+      }
       showMainMenu();
     }
   };
@@ -260,9 +279,11 @@ const TerminalApp = () => {
     }
     print('Confirming upload...');
     try {
-      const { tempFileId, suggestedSubject } = context;
-      await confirmUpload(tempFileId, suggestedSubject);
-      print('Material saved successfully.');
+      const { tempFileId, suggestedSubject, pendingFilename } = context;
+      const data = await confirmUpload(tempFileId, suggestedSubject);
+      const filename = data.material?.filename || pendingFilename;
+      const subject = data.material?.subject || suggestedSubject;
+      printArrangedMessage(filename, subject);
     } catch (err) {
       print(`Error confirming: ${err.message}`, 'error');
     }
@@ -301,7 +322,8 @@ const TerminalApp = () => {
           type="file" 
           ref={fileInputRef} 
           style={{ display: 'none' }} 
-          onChange={onFileChange} 
+          onChange={onFileChange}
+          accept=".pdf,.docx,.c,.cpp,.h,.hpp,.py,.java,.js,.ts,.txt,.md"
         />
       </div>
 

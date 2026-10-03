@@ -111,7 +111,7 @@ export default function FileUpload({ onUploadSuccess, setAnnounceMessage }) {
             id="file-upload-input"
             type="file"
             className="file-input-hidden"
-            accept=".pdf,.c,.cpp,.h,.hpp,.py,.java,.js,.ts,.txt,.md"
+            accept=".pdf,.docx,.c,.cpp,.h,.hpp,.py,.java,.js,.ts,.txt,.md"
             onChange={handleFileChange}
             disabled={isProcessing}
           />
@@ -128,7 +128,7 @@ export default function FileUpload({ onUploadSuccess, setAnnounceMessage }) {
               </div>
             ) : (
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                Drop or select PDF notes, source code, or text notes
+                Drop or select PDF/DOCX notes, source code, or text notes
               </span>
             )}
 
@@ -153,7 +153,7 @@ export default function FileUpload({ onUploadSuccess, setAnnounceMessage }) {
             </button>
 
             <div className="supported-types">
-              Supported: <code>.pdf, .cpp, .c, .h, .py, .java, .js, .ts, .txt, .md</code>
+              Supported: <code>.pdf, .docx, .cpp, .c, .h, .py, .java, .js, .ts, .txt, .md</code>
             </div>
           </div>
 

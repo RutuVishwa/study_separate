@@ -1,10 +1,22 @@
+const UPLOAD_TIMEOUT_MS = 120000;
+
 function resolveApiBaseUrl() {
   const envUrl = import.meta.env.VITE_API_URL;
-  const fallback = 'http://127.0.0.1:8000/api';
-  if (!envUrl) return fallback;
-  const trimmed = envUrl.replace(/\/$/, '');
-  if (trimmed.endsWith('/api')) return trimmed;
-  return `${trimmed}/api`;
+  let base;
+  if (!envUrl) {
+    if (typeof window !== 'undefined' && window.location?.origin) {
+      base = `${window.location.origin}/api`;
+    } else {
+      base = 'http://127.0.0.1:8000/api';
+    }
+  } else {
+    const trimmed = envUrl.replace(/\/$/, '');
+    base = trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+  }
+  if (typeof window !== 'undefined' && window.location?.protocol === 'https:' && base.startsWith('http:')) {
+    base = 'https:' + base.slice(5);
+  }
+  return base;
 }
 
 const API_BASE_URL = resolveApiBaseUrl();
@@ -44,14 +56,31 @@ export async function uploadMaterial(file, subjectOverride = null, onProgress = 
     formData.append('subject_override', subjectOverride);
   }
 
-  const res = await fetch(`${API_BASE_URL}/materials/upload`, {
-    method: 'POST',
-    body: formData,
-  });
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timeoutId = controller ? setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS) : null;
 
-  const data = await res.json();
+  let res;
+  try {
+    res = await fetch(`${API_BASE_URL}/materials/upload`, {
+      method: 'POST',
+      body: formData,
+      signal: controller ? controller.signal : undefined,
+    });
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      throw new Error('Upload timed out. Please try again with a smaller file or better connection.');
+    }
+    if (err instanceof TypeError && /failed to fetch|networkerror/i.test(err.message || '')) {
+      throw new Error('Network error. Check your connection or try again (this can also happen if CORS or mixed HTTP/HTTPS is misconfigured).');
+    }
+    throw new Error(err?.message || 'Upload failed');
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(data.detail || 'Upload failed');
+    throw new Error(data.detail || `Upload failed (HTTP ${res.status})`);
   }
   return data;
 }

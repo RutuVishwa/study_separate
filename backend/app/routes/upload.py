@@ -60,7 +60,9 @@ async def upload_material(
 
     # If user explicitly provided a subject override upfront
     if subject_override and subject_override in ALLOWED_SUBJECTS:
-        stored_name, file_path = save_uploaded_file(file_bytes, original_filename, is_temp=False)
+        stored_name, file_path = save_uploaded_file(
+            file_bytes, original_filename, is_temp=False, subject=subject_override
+        )
         material = Material(
             filename=original_filename,
             stored_filename=stored_name,
@@ -77,7 +79,7 @@ async def upload_material(
         return UploadResponse(
             needs_confirmation=False,
             material=MaterialResponse.model_validate(material),
-            message=f"✓ '{original_filename}' was added to {subject_override}"
+            message=f"'{original_filename}' was arranged in folder: {subject_override}/"
         )
 
     # 3. Save file to TEMP for extraction & AI analysis
@@ -133,7 +135,7 @@ async def upload_material(
         )
 
     # High confidence: move temp file to uploads and save to DB
-    _, final_path = move_temp_to_uploads(temp_stored_name)
+    _, final_path = move_temp_to_uploads(temp_stored_name, classified_subject)
 
     material = Material(
         filename=original_filename,
@@ -151,7 +153,7 @@ async def upload_material(
     return UploadResponse(
         needs_confirmation=False,
         material=MaterialResponse.model_validate(material),
-        message=f"✓ '{original_filename}' was added to {classified_subject}"
+        message=f"'{original_filename}' was arranged in folder: {classified_subject}/"
     )
 
 @router.post("/confirm-upload", response_model=UploadResponse)
@@ -173,7 +175,7 @@ async def confirm_upload(
         )
 
     # Move temp file to permanent uploads
-    stored_name, final_path = move_temp_to_uploads(req.temp_file_id)
+    stored_name, final_path = move_temp_to_uploads(req.temp_file_id, req.confirmed_subject)
     file_size = final_path.stat().st_size
     
     # Extract original filename from stored_name (e.g. uuid_filename.ext)
@@ -197,5 +199,5 @@ async def confirm_upload(
     return UploadResponse(
         needs_confirmation=False,
         material=MaterialResponse.model_validate(material),
-        message=f"✓ '{orig_filename}' was confirmed and added to {req.confirmed_subject}"
+        message=f"'{orig_filename}' was arranged in folder: {req.confirmed_subject}/"
     )

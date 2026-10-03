@@ -101,6 +101,10 @@ body, html {
   color: var(--text-error);
 }
 
+.type-success {
+  color: var(--text-success);
+}
+
 .terminal-input-row {
   display: flex;
   align-items: center;

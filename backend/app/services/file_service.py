@@ -29,13 +29,29 @@ def generate_stored_filename(original_filename: str) -> str:
     unique_id = uuid.uuid4().hex[:12]
     return f"{unique_id}_{base_name}{ext}"
 
-def save_uploaded_file(file_bytes: bytes, original_filename: str, is_temp: bool = False) -> tuple[str, Path]:
+def get_subject_folder(subject: str) -> Path:
+    """Return (and create) the subject folder under uploads."""
+    folder = UPLOADS_DIR / subject
+    folder.mkdir(parents=True, exist_ok=True)
+    return folder
+
+def save_uploaded_file(
+    file_bytes: bytes,
+    original_filename: str,
+    is_temp: bool = False,
+    subject: str | None = None,
+) -> tuple[str, Path]:
     """
     Save raw file bytes to disk in uploads or temp directory.
     Returns (stored_filename, absolute_path).
     """
     stored_name = generate_stored_filename(original_filename)
-    target_dir = TEMP_DIR if is_temp else UPLOADS_DIR
+    if is_temp:
+        target_dir = TEMP_DIR
+    elif subject:
+        target_dir = get_subject_folder(subject)
+    else:
+        target_dir = UPLOADS_DIR
     target_path = target_dir / stored_name
 
     with open(target_path, "wb") as f:
@@ -43,13 +59,14 @@ def save_uploaded_file(file_bytes: bytes, original_filename: str, is_temp: bool 
 
     return stored_name, target_path
 
-def move_temp_to_uploads(temp_filename: str) -> tuple[str, Path]:
-    """Move a file from temp directory to final uploads directory."""
+def move_temp_to_uploads(temp_filename: str, subject: str | None = None) -> tuple[str, Path]:
+    """Move a file from temp directory to the subject's uploads folder."""
     temp_path = TEMP_DIR / temp_filename
     if not temp_path.exists():
         raise FileNotFoundError(f"Temp file {temp_filename} not found.")
 
-    target_path = UPLOADS_DIR / temp_filename
+    target_dir = get_subject_folder(subject) if subject else UPLOADS_DIR
+    target_path = target_dir / temp_filename
     shutil.move(str(temp_path), str(target_path))
     return temp_filename, target_path
 
