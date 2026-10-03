@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchDashboardStats, fetchMaterials, uploadMaterial, confirmUpload, deleteMaterial, getDownloadUrl } from '../services/api';
+import { fetchDashboardStats, fetchMaterials, uploadMaterial, confirmUpload, deleteMaterial, getDownloadUrl, fetchHealth } from '../services/api';
 
 const TerminalApp = () => {
   const [history, setHistory] = useState([
@@ -55,13 +55,27 @@ const TerminalApp = () => {
   };
 
   const hasInitialized = useRef(false);
+  const backendWarmed = useRef(false);
+
+  useEffect(() => {
+    if (!backendWarmed.current) {
+      backendWarmed.current = true;
+      fetchHealth({ retries: 3, retryDelayMs: 1500 }).catch(() => {});
+    }
+  }, []);
 
   useEffect(() => {
     if (mode === 'INIT' && !hasInitialized.current) {
       hasInitialized.current = true;
       setTimeout(() => {
-        print('System initialized successfully. Backend connected.');
-        showMainMenu();
+        (async () => {
+          try {
+            await fetchHealth({ retries: 2, retryDelayMs: 1000 });
+          } catch {
+          }
+          print('System initialized successfully. Backend connected.');
+          showMainMenu();
+        })();
       }, 500);
     }
   }, [mode]);

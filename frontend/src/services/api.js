@@ -95,13 +95,24 @@ async function tryBases({
   throw new Error('Unknown error: no API base candidates succeeded.');
 }
 
-export async function fetchHealth() {
-  const { res } = await tryBases({
-    path: '/health',
-    init: { method: 'GET' },
-    expectJson: false,
-  });
-  return await res.json().catch(() => ({ status: 'ok' }));
+export async function fetchHealth({ retries = 3, retryDelayMs = 1200 } = {}) {
+  let lastErr = null;
+  for (let i = 0; i < retries; i++) {
+    try {
+      const { res } = await tryBases({
+        path: '/health',
+        init: { method: 'GET' },
+        expectJson: false,
+      });
+      const data = await res.json().catch(() => ({ status: 'ok' }));
+      if (data) return data;
+    } catch (err) {
+      lastErr = err;
+      if (i < retries - 1) await new Promise(r => setTimeout(r, retryDelayMs * (i + 1)));
+    }
+  }
+  if (lastErr) throw lastErr;
+  return { status: 'ok' };
 }
 
 export async function fetchDashboardStats() {
@@ -128,7 +139,7 @@ export async function fetchMaterials(subject = null) {
 export async function uploadMaterial(file, subjectOverride = null, onProgress = () => {}) {
   let wokeBackend = false;
   try {
-    await fetchHealth();
+    await fetchHealth({ retries: 4, retryDelayMs: 1200 });
     wokeBackend = true;
   } catch {
   }
